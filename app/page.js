@@ -52,6 +52,10 @@ export default async function Dashboard() {
             <div style={styles.card}>
               <div style={styles.cardLabel}>Total GL Disbursals</div>
               <div style={styles.cardValue}>{summary.total_visits}</div>
+              <div style={styles.cardSubtext}>
+                {summary.field_visits || summary.total_visits} Field
+                {summary.dc_visits ? ` · ${summary.dc_visits} DC` : ''}
+              </div>
             </div>
             <div style={styles.card}>
               <div style={styles.cardLabel}>With PL</div>
@@ -161,10 +165,11 @@ export default async function Dashboard() {
                 <thead>
                   <tr>
                     <th style={styles.th}>City</th>
-                    <th style={styles.th}>GL Count</th>
+                    <th style={styles.th}>Total</th>
+                    <th style={styles.th}>Field</th>
+                    <th style={styles.th}>DC</th>
                     <th style={styles.th}>GL Median</th>
                     <th style={styles.th}>PL Count</th>
-                    <th style={styles.th}>PL Median</th>
                     <th style={styles.th}>PL %</th>
                   </tr>
                 </thead>
@@ -173,9 +178,10 @@ export default async function Dashboard() {
                     <tr key={c.city}>
                       <td style={styles.td}>{c.city}</td>
                       <td style={styles.td}>{c.count}</td>
+                      <td style={styles.td}>{c.field || c.count}</td>
+                      <td style={styles.td}>{c.dc || 0}</td>
                       <td style={styles.td}>{c.gl_median}m</td>
                       <td style={styles.td}>{c.pl_count}</td>
-                      <td style={styles.td}>{c.pl_median || '-'}m</td>
                       <td style={styles.td}>{Math.round((c.pl_count / c.count) * 100)}%</td>
                     </tr>
                   ))}
@@ -250,6 +256,7 @@ export default async function Dashboard() {
                 <thead>
                   <tr>
                     <th style={styles.th}>Visit ID</th>
+                    <th style={styles.th}>Source</th>
                     <th style={styles.th}>City</th>
                     <th style={styles.th}>Branch</th>
                     <th style={styles.th}>Total</th>
@@ -264,14 +271,15 @@ export default async function Dashboard() {
                   {outliers.map((o) => (
                     <tr key={o.visit_id}>
                       <td style={styles.td}>{o.visit_id}</td>
+                      <td style={styles.td}>{o.source || 'Field'}</td>
                       <td style={styles.td}>{o.city}</td>
                       <td style={styles.td}>{o.branch}</td>
                       <td style={{...styles.td, fontWeight: 'bold', color: '#ef4444'}}>{o.gl_total}m</td>
-                      <td style={styles.td}>{o.stages.kyc}m</td>
-                      <td style={styles.td}>{o.stages.gold_appraisal}m</td>
-                      <td style={styles.td}>{o.stages.gold_sealing}m</td>
-                      <td style={styles.td}>{o.stages.esign}m</td>
-                      <td style={styles.td}>{o.stages.disbursal}m</td>
+                      <td style={styles.td}>{o.stages?.kyc || '-'}m</td>
+                      <td style={styles.td}>{o.stages?.gold_appraisal || '-'}m</td>
+                      <td style={styles.td}>{o.stages?.gold_sealing || '-'}m</td>
+                      <td style={styles.td}>{o.stages?.esign || '-'}m</td>
+                      <td style={styles.td}>{o.stages?.disbursal || '-'}m</td>
                     </tr>
                   ))}
                 </tbody>
@@ -355,6 +363,11 @@ const styles = {
     fontSize: '32px',
     fontWeight: '700',
     color: '#f8fafc',
+  },
+  cardSubtext: {
+    fontSize: '12px',
+    color: '#64748b',
+    marginTop: '4px',
   },
   section: {
     marginBottom: '32px',
