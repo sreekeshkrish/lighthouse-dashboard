@@ -12,6 +12,18 @@ async function getReport() {
   }
 }
 
+function formatCurrency(amount) {
+  if (!amount) return '₹0';
+  return '₹' + amount.toLocaleString('en-IN');
+}
+
+function formatSegmentName(segment) {
+  if (segment.startsWith('Oro Money - ')) {
+    return segment.replace('Oro Money - ', '').replace(' Branch', ' DC');
+  }
+  return segment;
+}
+
 export default async function Dashboard() {
   const report = await getReport();
 
@@ -32,7 +44,7 @@ export default async function Dashboard() {
     );
   }
 
-  const { summary, gl, pl, loan_ops, city_breakdown, partner_breakdown, branch_breakdown, outliers } = report;
+  const { summary, city_breakdown } = report;
 
   return (
     <html>
@@ -48,244 +60,72 @@ export default async function Dashboard() {
           </header>
 
           {/* Summary Cards */}
-          <div style={styles.cardRow}>
-            <div style={styles.card}>
-              <div style={styles.cardLabel}>Total GL Disbursals</div>
-              <div style={styles.cardValue}>{summary.total_visits}</div>
-              <div style={styles.cardSubtext}>
-                {summary.field_visits || summary.total_visits} Field
-                {summary.dc_visits ? ` · ${summary.dc_visits} DC` : ''}
-              </div>
+          <div style={styles.summaryGrid}>
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Fresh GL</div>
+              <div style={styles.summaryValue}>{summary.total_gl}</div>
+              <div style={styles.summaryAmount}>{formatCurrency(summary.total_gl_amount)}</div>
             </div>
-            <div style={styles.card}>
-              <div style={styles.cardLabel}>With PL</div>
-              <div style={styles.cardValue}>{summary.with_pl}</div>
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Fresh PL</div>
+              <div style={styles.summaryValue}>{summary.total_pl}</div>
+              <div style={styles.summaryAmount}>{formatCurrency(summary.total_pl_amount)}</div>
             </div>
-            <div style={styles.card}>
-              <div style={styles.cardLabel}>PL Conversion</div>
-              <div style={styles.cardValue}>{summary.pl_conversion}%</div>
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>PL Conversion</div>
+              <div style={styles.summaryValue}>{summary.pl_conversion}%</div>
             </div>
           </div>
-
-          {/* GL Stats */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>GL Execution Time</h2>
-            <div style={styles.cardRow}>
-              <div style={styles.statCard}>
-                <div style={styles.statLabel}>Median</div>
-                <div style={styles.statValue}>{gl.median}m</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statLabel}>p90</div>
-                <div style={styles.statValue}>{gl.p90}m</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statLabel}>Min</div>
-                <div style={styles.statValue}>{gl.min}m</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statLabel}>Max</div>
-                <div style={styles.statValue}>{gl.max}m</div>
-              </div>
-            </div>
-          </div>
-
-          {/* GL Stage Breakdown */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>GL Stage Breakdown (Median)</h2>
-            <div style={styles.stageBar}>
-              {Object.entries(gl.stages).map(([stage, mins]) => (
-                <div key={stage} style={{...styles.stageSegment, flex: Math.max(mins, 1)}}>
-                  <div style={styles.stageName}>{formatStageName(stage)}</div>
-                  <div style={styles.stageTime}>{mins}m</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* PL Stats */}
-          {pl && pl.count > 0 && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>PL Execution Time</h2>
-              <div style={styles.cardRow}>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>Count</div>
-                  <div style={styles.statValue}>{pl.count}</div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>Median</div>
-                  <div style={styles.statValue}>{pl.median}m</div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>p90</div>
-                  <div style={styles.statValue}>{pl.p90}m</div>
-                </div>
-              </div>
-              {pl.stages && (
-                <div style={{...styles.cardRow, marginTop: '12px'}}>
-                  <div style={styles.statCard}>
-                    <div style={styles.statLabel}>Selection → Initiate</div>
-                    <div style={styles.statValue}>{pl.stages.selection_to_initiate || 0}m</div>
-                  </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statLabel}>Initiate → Complete</div>
-                    <div style={styles.statValue}>{pl.stages.initiate_to_complete || 0}m</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Loan Ops Efficiency */}
-          {loan_ops && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Loan Ops Efficiency (Median)</h2>
-              <div style={styles.cardRow}>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>GL Approval → Initiate</div>
-                  <div style={styles.statValue}>{loan_ops.gl_approval_to_initiate || 0}m</div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>GL Initiate → Complete</div>
-                  <div style={styles.statValue}>{loan_ops.gl_initiate_to_complete || 0}m</div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statLabel}>PL Initiate → Complete</div>
-                  <div style={styles.statValue}>{loan_ops.sl_initiate_to_complete || 0}m</div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* City Breakdown */}
-          {city_breakdown && city_breakdown.length > 0 && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>City Breakdown</h2>
+          {city_breakdown && city_breakdown.map((cityData) => (
+            <div key={cityData.city} style={styles.citySection}>
+              <div style={styles.cityHeader}>
+                <h2 style={styles.cityTitle}>{cityData.city}</h2>
+                <div style={styles.cityStats}>
+                  <div style={styles.cityStatGroup}>
+                    <span style={styles.cityStatLabel}>GL:</span>
+                    <span style={styles.cityStatValue}>{cityData.gl_total}</span>
+                    <span style={styles.cityStatAmount}>({formatCurrency(cityData.gl_amount)})</span>
+                  </div>
+                  <div style={styles.cityStatGroup}>
+                    <span style={styles.cityStatLabel}>PL:</span>
+                    <span style={styles.cityStatValue}>{cityData.pl_total}</span>
+                    <span style={styles.cityStatAmount}>({formatCurrency(cityData.pl_amount)})</span>
+                  </div>
+                  <div style={styles.cityStatGroup}>
+                    <span style={styles.cityStatLabel}>Conv:</span>
+                    <span style={styles.cityStatValue}>{cityData.pl_conversion}%</span>
+                  </div>
+                </div>
+              </div>
+              
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>City</th>
-                    <th style={styles.th}>Total</th>
-                    <th style={styles.th}>Field</th>
-                    <th style={styles.th}>DC</th>
-                    <th style={styles.th}>GL Median</th>
-                    <th style={styles.th}>PL Count</th>
-                    <th style={styles.th}>PL %</th>
+                    <th style={styles.th}>Segment</th>
+                    <th style={styles.thRight}>GL #</th>
+                    <th style={styles.thRight}>GL Amt</th>
+                    <th style={styles.thRight}>PL #</th>
+                    <th style={styles.thRight}>PL Amt</th>
+                    <th style={styles.thRight}>PL %</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {city_breakdown.map((c) => (
-                    <tr key={c.city}>
-                      <td style={styles.td}>{c.city}</td>
-                      <td style={styles.td}>{c.count}</td>
-                      <td style={styles.td}>{c.field || c.count}</td>
-                      <td style={styles.td}>{c.dc || 0}</td>
-                      <td style={styles.td}>{c.gl_median}m</td>
-                      <td style={styles.td}>{c.pl_count}</td>
-                      <td style={styles.td}>{Math.round((c.pl_count / c.count) * 100)}%</td>
+                  {cityData.segments.map((seg) => (
+                    <tr key={seg.segment}>
+                      <td style={styles.td}>{formatSegmentName(seg.segment)}</td>
+                      <td style={styles.tdRight}>{seg.gl_count}</td>
+                      <td style={styles.tdRightAmount}>{formatCurrency(seg.gl_amount)}</td>
+                      <td style={styles.tdRight}>{seg.pl_count}</td>
+                      <td style={styles.tdRightAmount}>{formatCurrency(seg.pl_amount)}</td>
+                      <td style={styles.tdRight}>{seg.pl_conversion}%</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-
-          {/* Partner Breakdown */}
-          {partner_breakdown && partner_breakdown.length > 0 && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Partner Breakdown</h2>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Partner</th>
-                    <th style={styles.th}>GL Count</th>
-                    <th style={styles.th}>GL Median</th>
-                    <th style={styles.th}>PL Count</th>
-                    <th style={styles.th}>PL Median</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {partner_breakdown.map((p) => (
-                    <tr key={p.partner}>
-                      <td style={styles.td}>{p.partner}</td>
-                      <td style={styles.td}>{p.count}</td>
-                      <td style={styles.td}>{p.gl_median}m</td>
-                      <td style={styles.td}>{p.pl_count}</td>
-                      <td style={styles.td}>{p.pl_median || '-'}m</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Branch Breakdown */}
-          {branch_breakdown && branch_breakdown.length > 0 && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Branch Breakdown (Top 15)</h2>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Branch</th>
-                    <th style={styles.th}>Partner</th>
-                    <th style={styles.th}>GL Count</th>
-                    <th style={styles.th}>GL Median</th>
-                    <th style={styles.th}>PL Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {branch_breakdown.slice(0, 15).map((b, i) => (
-                    <tr key={i}>
-                      <td style={styles.td}>{b.branch}</td>
-                      <td style={styles.td}>{b.partner}</td>
-                      <td style={styles.td}>{b.count}</td>
-                      <td style={styles.td}>{b.gl_median}m</td>
-                      <td style={styles.td}>{b.pl_count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Outliers */}
-          {outliers && outliers.length > 0 && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Slowest Visits (&gt;60m)</h2>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Visit ID</th>
-                    <th style={styles.th}>Source</th>
-                    <th style={styles.th}>City</th>
-                    <th style={styles.th}>Branch</th>
-                    <th style={styles.th}>Total</th>
-                    <th style={styles.th}>KYC</th>
-                    <th style={styles.th}>Appraisal</th>
-                    <th style={styles.th}>Sealing</th>
-                    <th style={styles.th}>eSign</th>
-                    <th style={styles.th}>Disbursal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {outliers.map((o) => (
-                    <tr key={o.visit_id}>
-                      <td style={styles.td}>{o.visit_id}</td>
-                      <td style={styles.td}>{o.source || 'Field'}</td>
-                      <td style={styles.td}>{o.city}</td>
-                      <td style={styles.td}>{o.branch}</td>
-                      <td style={{...styles.td, fontWeight: 'bold', color: '#ef4444'}}>{o.gl_total}m</td>
-                      <td style={styles.td}>{o.stages?.kyc || '-'}m</td>
-                      <td style={styles.td}>{o.stages?.gold_appraisal || '-'}m</td>
-                      <td style={styles.td}>{o.stages?.gold_sealing || '-'}m</td>
-                      <td style={styles.td}>{o.stages?.esign || '-'}m</td>
-                      <td style={styles.td}>{o.stages?.disbursal || '-'}m</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          ))}
 
           <footer style={styles.footer}>
             Generated: {new Date(report.generated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
@@ -294,17 +134,6 @@ export default async function Dashboard() {
       </body>
     </html>
   );
-}
-
-function formatStageName(stage) {
-  const names = {
-    kyc: 'KYC',
-    gold_appraisal: 'Appraisal',
-    gold_sealing: 'Sealing',
-    esign: 'eSign',
-    disbursal: 'Disbursal'
-  };
-  return names[stage] || stage;
 }
 
 const styles = {
@@ -317,7 +146,7 @@ const styles = {
     minHeight: '100vh',
   },
   container: {
-    maxWidth: '1200px',
+    maxWidth: '900px',
     margin: '0 auto',
     padding: '24px',
   },
@@ -339,108 +168,118 @@ const styles = {
     color: '#94a3b8',
     fontSize: '16px',
   },
-  cardRow: {
-    display: 'flex',
+  summaryGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '16px',
-    marginBottom: '24px',
-    flexWrap: 'wrap',
+    marginBottom: '32px',
   },
-  card: {
+  summaryCard: {
     backgroundColor: '#1e293b',
     borderRadius: '12px',
     padding: '20px',
-    flex: '1',
-    minWidth: '140px',
+    textAlign: 'center',
   },
-  cardLabel: {
+  summaryLabel: {
     fontSize: '13px',
     color: '#94a3b8',
     marginBottom: '8px',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
   },
-  cardValue: {
-    fontSize: '32px',
+  summaryValue: {
+    fontSize: '36px',
     fontWeight: '700',
     color: '#f8fafc',
   },
-  cardSubtext: {
-    fontSize: '12px',
-    color: '#64748b',
+  summaryAmount: {
+    fontSize: '14px',
+    color: '#22c55e',
     marginTop: '4px',
   },
-  section: {
-    marginBottom: '32px',
+  citySection: {
+    marginBottom: '24px',
+    backgroundColor: '#1e293b',
+    borderRadius: '12px',
+    overflow: 'hidden',
   },
-  sectionTitle: {
+  cityHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '16px 20px',
+    backgroundColor: '#334155',
+    flexWrap: 'wrap',
+    gap: '12px',
+  },
+  cityTitle: {
     fontSize: '18px',
     fontWeight: '600',
-    marginBottom: '16px',
+    margin: 0,
     color: '#f8fafc',
   },
-  statCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: '8px',
-    padding: '16px',
-    textAlign: 'center',
-    minWidth: '100px',
+  cityStats: {
+    display: 'flex',
+    gap: '20px',
+    flexWrap: 'wrap',
   },
-  statLabel: {
-    fontSize: '11px',
+  cityStatGroup: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '4px',
+  },
+  cityStatLabel: {
+    fontSize: '12px',
     color: '#94a3b8',
-    marginBottom: '4px',
   },
-  statValue: {
-    fontSize: '20px',
+  cityStatValue: {
+    fontSize: '14px',
     fontWeight: '600',
     color: '#f8fafc',
   },
-  stageBar: {
-    display: 'flex',
-    backgroundColor: '#1e293b',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    minHeight: '60px',
-  },
-  stageSegment: {
-    padding: '12px 8px',
-    textAlign: 'center',
-    borderRight: '1px solid #334155',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    minWidth: '60px',
-  },
-  stageName: {
-    fontSize: '11px',
-    color: '#94a3b8',
-    marginBottom: '4px',
-  },
-  stageTime: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#fbbf24',
+  cityStatAmount: {
+    fontSize: '12px',
+    color: '#22c55e',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    backgroundColor: '#1e293b',
-    borderRadius: '8px',
-    overflow: 'hidden',
   },
   th: {
-    padding: '12px',
+    padding: '12px 16px',
     textAlign: 'left',
-    backgroundColor: '#334155',
     fontSize: '11px',
     fontWeight: '600',
-    color: '#94a3b8',
+    color: '#64748b',
     textTransform: 'uppercase',
+    borderBottom: '1px solid #334155',
+  },
+  thRight: {
+    padding: '12px 16px',
+    textAlign: 'right',
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    borderBottom: '1px solid #334155',
   },
   td: {
-    padding: '12px',
+    padding: '12px 16px',
+    fontSize: '14px',
     borderBottom: '1px solid #334155',
+  },
+  tdRight: {
+    padding: '12px 16px',
+    fontSize: '14px',
+    textAlign: 'right',
+    borderBottom: '1px solid #334155',
+  },
+  tdRightAmount: {
+    padding: '12px 16px',
     fontSize: '13px',
+    textAlign: 'right',
+    borderBottom: '1px solid #334155',
+    color: '#22c55e',
   },
   footer: {
     marginTop: '40px',
