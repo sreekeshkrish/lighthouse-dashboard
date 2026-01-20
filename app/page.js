@@ -12,18 +12,8 @@ async function getReport() {
   }
 }
 
-async function getReportDates() {
-  try {
-    const dates = await kv.get('lighthouse:dates');
-    return dates || [];
-  } catch (error) {
-    return [];
-  }
-}
-
 export default async function Dashboard() {
   const report = await getReport();
-  const dates = await getReportDates();
 
   if (!report) {
     return (
@@ -42,10 +32,7 @@ export default async function Dashboard() {
     );
   }
 
-  const { summary, gl, pl, outliers, raw_data } = report;
-  
-  // Top 5 outliers by gl_total
-  const topOutliers = [...(outliers || [])].sort((a, b) => b.gl_total - a.gl_total).slice(0, 5);
+  const { summary, gl, pl, loan_ops, city_breakdown, partner_breakdown, branch_breakdown, outliers } = report;
 
   return (
     <html>
@@ -72,7 +59,7 @@ export default async function Dashboard() {
             </div>
             <div style={styles.card}>
               <div style={styles.cardLabel}>PL Conversion</div>
-              <div style={styles.cardValue}>{Math.round((summary.with_pl / summary.total_visits) * 100)}%</div>
+              <div style={styles.cardValue}>{summary.pl_conversion}%</div>
             </div>
           </div>
 
@@ -82,26 +69,26 @@ export default async function Dashboard() {
             <div style={styles.cardRow}>
               <div style={styles.statCard}>
                 <div style={styles.statLabel}>Median</div>
-                <div style={styles.statValue}>{gl.median} min</div>
+                <div style={styles.statValue}>{gl.median}m</div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statLabel}>p90</div>
-                <div style={styles.statValue}>{gl.p90} min</div>
+                <div style={styles.statValue}>{gl.p90}m</div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statLabel}>Min</div>
-                <div style={styles.statValue}>{gl.min} min</div>
+                <div style={styles.statValue}>{gl.min}m</div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statLabel}>Max</div>
-                <div style={styles.statValue}>{gl.max} min</div>
+                <div style={styles.statValue}>{gl.max}m</div>
               </div>
             </div>
           </div>
 
-          {/* Stage Breakdown */}
+          {/* GL Stage Breakdown */}
           <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Stage Breakdown (Median)</h2>
+            <h2 style={styles.sectionTitle}>GL Stage Breakdown (Median)</h2>
             <div style={styles.stageBar}>
               {Object.entries(gl.stages).map(([stage, mins]) => (
                 <div key={stage} style={{...styles.stageSegment, flex: Math.max(mins, 1)}}>
@@ -123,24 +110,148 @@ export default async function Dashboard() {
                 </div>
                 <div style={styles.statCard}>
                   <div style={styles.statLabel}>Median</div>
-                  <div style={styles.statValue}>{pl.median} min</div>
+                  <div style={styles.statValue}>{pl.median}m</div>
                 </div>
                 <div style={styles.statCard}>
                   <div style={styles.statLabel}>p90</div>
-                  <div style={styles.statValue}>{pl.p90} min</div>
+                  <div style={styles.statValue}>{pl.p90}m</div>
+                </div>
+              </div>
+              {pl.stages && (
+                <div style={{...styles.cardRow, marginTop: '12px'}}>
+                  <div style={styles.statCard}>
+                    <div style={styles.statLabel}>Selection → Initiate</div>
+                    <div style={styles.statValue}>{pl.stages.selection_to_initiate || 0}m</div>
+                  </div>
+                  <div style={styles.statCard}>
+                    <div style={styles.statLabel}>Initiate → Complete</div>
+                    <div style={styles.statValue}>{pl.stages.initiate_to_complete || 0}m</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Loan Ops Efficiency */}
+          {loan_ops && (
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Loan Ops Efficiency (Median)</h2>
+              <div style={styles.cardRow}>
+                <div style={styles.statCard}>
+                  <div style={styles.statLabel}>GL Approval → Initiate</div>
+                  <div style={styles.statValue}>{loan_ops.gl_approval_to_initiate || 0}m</div>
+                </div>
+                <div style={styles.statCard}>
+                  <div style={styles.statLabel}>GL Initiate → Complete</div>
+                  <div style={styles.statValue}>{loan_ops.gl_initiate_to_complete || 0}m</div>
+                </div>
+                <div style={styles.statCard}>
+                  <div style={styles.statLabel}>PL Initiate → Complete</div>
+                  <div style={styles.statValue}>{loan_ops.sl_initiate_to_complete || 0}m</div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Top Outliers */}
-          {topOutliers.length > 0 && (
+          {/* City Breakdown */}
+          {city_breakdown && city_breakdown.length > 0 && (
             <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Slowest Visits</h2>
+              <h2 style={styles.sectionTitle}>City Breakdown</h2>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>City</th>
+                    <th style={styles.th}>GL Count</th>
+                    <th style={styles.th}>GL Median</th>
+                    <th style={styles.th}>PL Count</th>
+                    <th style={styles.th}>PL Median</th>
+                    <th style={styles.th}>PL %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {city_breakdown.map((c) => (
+                    <tr key={c.city}>
+                      <td style={styles.td}>{c.city}</td>
+                      <td style={styles.td}>{c.count}</td>
+                      <td style={styles.td}>{c.gl_median}m</td>
+                      <td style={styles.td}>{c.pl_count}</td>
+                      <td style={styles.td}>{c.pl_median || '-'}m</td>
+                      <td style={styles.td}>{Math.round((c.pl_count / c.count) * 100)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Partner Breakdown */}
+          {partner_breakdown && partner_breakdown.length > 0 && (
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Partner Breakdown</h2>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Partner</th>
+                    <th style={styles.th}>GL Count</th>
+                    <th style={styles.th}>GL Median</th>
+                    <th style={styles.th}>PL Count</th>
+                    <th style={styles.th}>PL Median</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partner_breakdown.map((p) => (
+                    <tr key={p.partner}>
+                      <td style={styles.td}>{p.partner}</td>
+                      <td style={styles.td}>{p.count}</td>
+                      <td style={styles.td}>{p.gl_median}m</td>
+                      <td style={styles.td}>{p.pl_count}</td>
+                      <td style={styles.td}>{p.pl_median || '-'}m</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Branch Breakdown */}
+          {branch_breakdown && branch_breakdown.length > 0 && (
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Branch Breakdown (Top 15)</h2>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Branch</th>
+                    <th style={styles.th}>Partner</th>
+                    <th style={styles.th}>GL Count</th>
+                    <th style={styles.th}>GL Median</th>
+                    <th style={styles.th}>PL Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {branch_breakdown.slice(0, 15).map((b, i) => (
+                    <tr key={i}>
+                      <td style={styles.td}>{b.branch}</td>
+                      <td style={styles.td}>{b.partner}</td>
+                      <td style={styles.td}>{b.count}</td>
+                      <td style={styles.td}>{b.gl_median}m</td>
+                      <td style={styles.td}>{b.pl_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Outliers */}
+          {outliers && outliers.length > 0 && (
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Slowest Visits (&gt;60m)</h2>
               <table style={styles.table}>
                 <thead>
                   <tr>
                     <th style={styles.th}>Visit ID</th>
+                    <th style={styles.th}>City</th>
+                    <th style={styles.th}>Branch</th>
                     <th style={styles.th}>Total</th>
                     <th style={styles.th}>KYC</th>
                     <th style={styles.th}>Appraisal</th>
@@ -150,10 +261,12 @@ export default async function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {topOutliers.map((o) => (
+                  {outliers.map((o) => (
                     <tr key={o.visit_id}>
                       <td style={styles.td}>{o.visit_id}</td>
-                      <td style={{...styles.td, fontWeight: 'bold'}}>{o.gl_total}m</td>
+                      <td style={styles.td}>{o.city}</td>
+                      <td style={styles.td}>{o.branch}</td>
+                      <td style={{...styles.td, fontWeight: 'bold', color: '#ef4444'}}>{o.gl_total}m</td>
                       <td style={styles.td}>{o.stages.kyc}m</td>
                       <td style={styles.td}>{o.stages.gold_appraisal}m</td>
                       <td style={styles.td}>{o.stages.gold_sealing}m</td>
@@ -196,7 +309,7 @@ const styles = {
     minHeight: '100vh',
   },
   container: {
-    maxWidth: '1000px',
+    maxWidth: '1200px',
     margin: '0 auto',
     padding: '24px',
   },
@@ -260,7 +373,7 @@ const styles = {
     minWidth: '100px',
   },
   statLabel: {
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#94a3b8',
     marginBottom: '4px',
   },
@@ -306,7 +419,7 @@ const styles = {
     padding: '12px',
     textAlign: 'left',
     backgroundColor: '#334155',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: '600',
     color: '#94a3b8',
     textTransform: 'uppercase',
@@ -314,7 +427,7 @@ const styles = {
   td: {
     padding: '12px',
     borderBottom: '1px solid #334155',
-    fontSize: '14px',
+    fontSize: '13px',
   },
   footer: {
     marginTop: '40px',
