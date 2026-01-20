@@ -67,13 +67,13 @@ export default async function Dashboard() {
               <div style={styles.summaryAmount}>{formatCurrency(summary.total_gl_amount)}</div>
             </div>
             <div style={styles.summaryCard}>
-              <div style={styles.summaryLabel}>Fresh PL</div>
+              <div style={styles.summaryLabel}>With PL</div>
               <div style={styles.summaryValue}>{summary.total_pl}</div>
               <div style={styles.summaryAmount}>{formatCurrency(summary.total_pl_amount)}</div>
             </div>
             <div style={styles.summaryCard}>
-              <div style={styles.summaryLabel}>PL Conversion</div>
-              <div style={styles.summaryValue}>{summary.pl_conversion}%</div>
+              <div style={styles.summaryLabel}>PL Attach %</div>
+              <div style={styles.summaryValue}>{summary.pl_attach_rate}%</div>
             </div>
           </div>
 
@@ -94,8 +94,8 @@ export default async function Dashboard() {
                     <span style={styles.cityStatAmount}>({formatCurrency(cityData.pl_amount)})</span>
                   </div>
                   <div style={styles.cityStatGroup}>
-                    <span style={styles.cityStatLabel}>Conv:</span>
-                    <span style={styles.cityStatValue}>{cityData.pl_conversion}%</span>
+                    <span style={styles.cityStatLabel}>Attach:</span>
+                    <span style={styles.cityStatValue}>{cityData.pl_attach_rate}%</span>
                   </div>
                 </div>
               </div>
@@ -108,7 +108,7 @@ export default async function Dashboard() {
                     <th style={styles.thRight}>GL Amt</th>
                     <th style={styles.thRight}>PL #</th>
                     <th style={styles.thRight}>PL Amt</th>
-                    <th style={styles.thRight}>PL %</th>
+                    <th style={styles.thRight}>Attach %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -119,7 +119,7 @@ export default async function Dashboard() {
                       <td style={styles.tdRightAmount}>{formatCurrency(seg.gl_amount)}</td>
                       <td style={styles.tdRight}>{seg.pl_count}</td>
                       <td style={styles.tdRightAmount}>{formatCurrency(seg.pl_amount)}</td>
-                      <td style={styles.tdRight}>{seg.pl_conversion}%</td>
+                      <td style={styles.tdRight}>{seg.pl_attach_rate}%</td>
                     </tr>
                   ))}
                 </tbody>
